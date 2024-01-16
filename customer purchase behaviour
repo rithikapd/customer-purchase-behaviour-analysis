@@ -1,0 +1,413 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.io as pio
+import itertools
+
+from plotly.offline import init_notebook_mode
+init_notebook_mode(connected=True)
+
+import warnings
+warnings.filterwarnings('ignore')
+plt.style.use('_mpl-gallery')
+
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
+from sklearn.naive_bayes import MultinomialNB
+from sklearn import metrics
+
+data = pd.read_csv(r"C:\Users\divya\Downloads\Customer_Behaviour.csv")
+print(f"shape: {data.shape}")
+data.head()
+
+df = pd.DataFrame(data)
+df
+
+df.info()
+
+df.isnull().sum().to_frame('NaN value').T
+
+for col in df:
+    print(f"{col}: {df[col].nunique()}")
+
+df.describe(include=[object]).T
+
+df.drop('User ID', axis=1, inplace=True)
+df
+
+df['Gender'] = df['Gender'].replace(['Male', 'Female'], [0, 1])
+df
+
+df.info()
+
+df.isna().sum()
+
+font = {'fontsize':16, 'fontstyle':'italic', 'backgroundcolor':'black', 'color':'orange'}
+%matplotlib inline
+plt.style.use('seaborn-notebook')
+sns.kdeplot(df.loc[df['Purchased'] == 0, 'EstimatedSalary'], label='No Purchased', shade=True)
+sns.kdeplot(df.loc[df['Purchased'] == 1, 'EstimatedSalary'], label='Purchased', shade=True)
+plt.title('KDE of EstimatedSalary (based on Purchased)', fontdict=font, pad=15)
+plt.xticks(np.arange(0,200001,10000), rotation=90)
+plt.xlim([0,200001])
+plt.legend()
+plt.show()
+
+%matplotlib inline
+plt.style.use('seaborn-notebook')
+sns.kdeplot(df.loc[df['Purchased'] == 0, 'Age'], label='No Purchased', shade=True)
+sns.kdeplot(df.loc[df['Purchased'] == 1, 'Age'], label='Purchased', shade=True)
+plt.title('KDE of Age (based on Purchased)', fontdict=font, pad=15)
+plt.xticks(np.arange(0,70,5))
+plt.xlim([10,70])
+plt.legend()
+plt.show()
+
+%matplotlib inline
+plt.style.use('seaborn-notebook')
+sns.kdeplot(df.loc[df['Purchased'] == 0, 'Age'], label='No Purchased', shade=True)
+sns.kdeplot(df.loc[df['Purchased'] == 1, 'Age'], label='Purchased', shade=True)
+plt.title('KDE of Age (based on Purchased)', fontdict=font, pad=15)
+plt.xticks(np.arange(0,70,5))
+plt.xlim([10,70])
+plt.legend()
+plt.show()
+
+%matplotlib inline
+plt.style.use('seaborn-notebook')
+sns.kdeplot(df.loc[df['Gender'] == 0, 'Age'], label='Male', shade=True)
+sns.kdeplot(df.loc[df['Gender'] == 1, 'Age'], label='Female', shade=True)
+plt.title('KDE of Age (based on Gender)', fontdict=font, pad=15)
+plt.xticks(np.arange(0,70,5))
+plt.xlim([10,70])
+plt.legend()
+plt.show()
+
+df.describe().T
+
+fig, axes = plt.subplots(1,2,figsize=(10,4))
+
+sns.countplot(data=df, x='Purchased', ax=axes[0])
+for container in axes[0].containers:
+    axes[0].bar_label(container)
+slices = df.Purchased.value_counts().values
+activities = ['No Purchased (0)', 'Purchased (1)']
+axes[1].pie(slices, labels=activities, colors=['blue','orange'], shadow=True, explode=[0,0.05], autopct='%1.1f%%')
+
+plt.suptitle('Count of Purchased', y=1.09, **font)
+plt.show()
+
+fig, axes = plt.subplots(1,2,figsize=(10,4))
+
+sns.countplot(data=df, x='Gender', ax=axes[0])
+for container in axes[0].containers:
+    axes[0].bar_label(container)
+slices = df.Gender.value_counts().values
+activities = ['Female (1)', 'Male (0)']
+axes[1].pie(slices, labels=activities, colors=['blue','orange'], shadow=True, explode=[0,0.05], autopct='%1.1f%%')
+
+plt.suptitle('Count of Gender', y=1.09, **font)
+plt.show()
+
+%matplotlib inline
+ax = sns.countplot(data=df, x='Purchased', hue='Gender')
+for container in ax.containers:
+    ax.bar_label(container)
+plt.title('Count of Purchased (based on Gender)', fontdict=font, pad=15)
+plt.show()
+
+sns.heatmap(df.corr(), cmap='Reds', annot=True)
+plt.suptitle('Count of Purchased (based on Gender)', y=1.09, x=0.35, **font)
+plt.show()
+
+for col in ['Gender', 'Purchased']:
+    sns.boxplot(data=df, x=col, y='EstimatedSalary')
+    plt.title(f'Box plot of EstimatedSalary for {col}', fontdict=font)
+    plt.show()
+
+%matplotlib inline
+# check feature correlation
+sns.scatterplot(data=df,x='Age', y='EstimatedSalary', hue='Purchased',)
+plt.title('Scatter plot of features', y=1.04, fontdict=font)
+plt.xticks(np.arange(15,65,5))
+plt.show()
+
+fig = px.scatter_3d(
+        data_frame=df,
+        x='Age',
+        y='EstimatedSalary',
+        z='Gender',
+        color='Purchased',
+        template='ggplot2',
+        opacity=0.6,
+        height=700,
+        title=f'3d scatter based on Age, EstimatedSalary, Gender and Purchased'
+)
+pio.show(fig)
+
+results = pd.pivot_table(data=df, index='Purchased', columns='Gender', values='EstimatedSalary')
+results.style.background_gradient(cmap='summer_r')
+
+sns.heatmap(results, cmap='summer_r', annot=True)
+plt.suptitle('EstimatedSalary for Gender and Purchased', y=1.09, x=0.4, **font)
+plt.show()
+
+results = pd.pivot_table(data=df, index='Purchased', columns='Gender', values='Age')
+results.style.background_gradient(cmap='summer_r')
+
+sns.heatmap(results, cmap='summer_r', annot=True)
+plt.suptitl()e('Age for Gender and Purchased', y=1.09, x=0.4, **font)
+plt.show()
+
+df
+
+df2 = df.copy()
+scaler = MinMaxScaler(feature_range=(18,60)).fit(df[['EstimatedSalary']])
+df2['EstimatedSalary'] = scaler.transform(df2['EstimatedSalary'].values.reshape(-1,1))
+df2
+
+x = np.asanyarray(df2.drop('Purchased', axis=1))
+y = df2.Purchased.values.reshape(-1,1)
+
+FPR1 = []
+TPR1 = []
+FPR0 = []
+TPR0 = []
+ACC_test = []
+ACC_train = []
+Recall = []
+Precision = []
+F1 = []
+
+def plot_confusion_matrix2(cm, classes,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function plots the confusion matrix.
+        cm(array): confusion matrix
+        classes(dictionary): classes in our target
+    """
+    plt.figure(figsize=(10,7))
+    plt.grid(False)
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt ='d'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
+    plt.tight_layout()
+    plt.show()
+
+def Perform_cross_val(model, k, x, y, scoring):
+    """
+    perform cross validation
+        model: logistic model
+        k(scaler): the value for n_splits in KFold()
+        x(DataFrame or array):  x_train
+        y(DataFrame or array): y_train
+        scoring(string): an approach for evaluation in cross validation
+    """
+
+    kf = KFold(n_splits=k)
+    cv_results = cross_val_score(model, x, y, cv=kf, scoring=scoring)
+    cv_mean = np.mean(cv_results)
+    print('-'*20, f"CV for k={k}, scoring={scoring}", '-'*20)
+    print(f"CV mean: {cv_mean}")
+    print(f"CV results: {cv_results}\n")
+def find_fold_index(k, x):
+    """
+    Find fold index in kfold
+        k(scaler): the value used for n_splits in KFold()
+        x(DataFrame or array): x_train
+    """
+
+    my_fold_index = []
+    j=1
+    for _ , test in KFold(k).split(x):
+
+        my_fold_index = []
+        for i in test:
+            my_fold_index.append(i)
+        print(f"fold {j}: [{my_fold_index[0]},{my_fold_index[-1]}]")
+        print(20*'-')
+        j += 1
+
+def plot_results(FPR0, TPR0, FPR1, TPR1, ACC_test, ACC_train, Recall, Precision, F1):
+    """
+    draw ROC curve and plot of Recall, precision, f1 score etc.
+        FPR0(list): list of False Positive Rate for class 0
+        TPR0(list): list of True Positive Rate for class 0
+        FPR1(list): list of Flase Positive Rate for class 1
+        TPR1(list): list of True Positive Rate for class 1
+        ACC(list): list of accuracy of models
+        Recall(list): list of recall score of models
+        Precision(list): list of Precision score of models
+        F1(list): list of F1 score of models 
+    """
+    fig, ax = plt.subplots(1,2,figsize=(10,4))
+    # plot model evaluation
+    ax[0].set_title('Model Evaluation Results', fontdict=font, y=1.02)
+    sns.lineplot(data=pd.DataFrame({'accoracy': ACC_test, 'Recall': Recall,
+                                    'Precision': Precision, 'F1 score': F1}), 
+                                    markers=True, ax=ax[0])
+    ax[0].set_xlabel('M')
+    ax[0].set_ylabel('Evaluation')
+    ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, -0.12),
+          fancybox=True, shadow=True)
+
+    # plot model evaluation
+    ax[1].set_title('Model Accuracy Results for train and test', fontdict=font, y=1.02)
+    sns.lineplot(data=pd.DataFrame({'test accuracy': ACC_test, 'train accuracy': ACC_train}), 
+                                    markers=True, ax=ax[1])
+    ax[1].set_xlabel('M')
+    ax[1].set_ylabel('Accuracy')
+    ax[1].legend(loc='upper center', bbox_to_anchor=(0.5, -0.12),
+          fancybox=True, shadow=True)
+    plt.show()
+    fig, ax = plt.subplots(1,2,figsize=(10,4))
+    i=1
+    ax[0].set_title('ROC Curve of Class 1', fontdict=font, y=1.02)
+    for fpr , tpr in zip(FPR1, TPR1):
+        ax[0].plot(fpr, tpr, label=f"ROC curve of model{i} (AUC = {round(metrics.auc(fpr, tpr),3)})")
+        i += 1
+        ax[0].set_xlabel('FPR')
+        ax[0].set_ylabel('TPR')
+    ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, -0.12),
+          fancybox=True, shadow=True)
+    
+    i=1
+    ax[1].set_title('ROC Curve of Class 0', fontdict=font, y=1.02)
+    for fpr , tpr in zip(FPR0, TPR0):
+        ax[1].plot(fpr, tpr, '--', label=f"ROC curve of model{i} (AUC = {round(metrics.auc(fpr, tpr),3)})")
+        i += 1
+        ax[1].set_xlabel('FPR')
+        ax[1].set_ylabel('TPR')
+    ax[1].legend(loc='upper center', bbox_to_anchor=(0.5, -0.12),
+        fancybox=True, shadow=True)
+    
+    plt.show()
+
+def modeling(x, y, test_size, classes, is_add=1 ):
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=0)
+    print(20*'-', 'Shape', 20*'-')
+    print(f"x_train: {x_train.shape}")
+    print(f"y_train: {y_train.shape}")
+    print(f"x_test: {x_test.shape}")
+    print(f"y_test: {y_test.shape}")
+  
+    clf = MultinomialNB()
+    clf.fit(x_train, y_train.ravel())
+    y_pred_train = clf.predict(x_train)
+    y_pred_test = clf.predict(x_test)
+    y_proba_train = clf.predict_proba(x_train)
+    y_proba_test = clf.predict_proba(x_test)
+
+    cm = metrics.confusion_matrix(y_test, y_pred_test)
+    fpr1, tpr1, _ = metrics.roc_curve(y_test, y_proba_test[:,1])
+    fpr0, tpr0, _ = metrics.roc_curve(y_test, y_proba_test[:,0])
+    acc_test = metrics.accuracy_score(y_test, y_pred_test)
+    acc_train = metrics.accuracy_score(y_train, y_pred_train)
+    rec = metrics.recall_score(y_test, y_pred_test)
+    pre = metrics.precision_score(y_test, y_pred_test)
+    f1 = metrics.f1_score(y_test, y_pred_test)
+    if is_add == 1:
+        FPR0.append(fpr0)
+        TPR0.append(tpr0)
+        FPR1.append(fpr1)
+        TPR1.append(tpr1)
+        ACC_test.append(acc_test)
+        ACC_train.append(acc_train)
+        Recall.append(rec)
+        Precision.append(pre)
+        F1.append(f1)
+
+    plot_results(FPR0, TPR0, FPR1, TPR1, ACC_test, ACC_train, Recall, Precision, F1)
+    print('-'*20 , 'Confusion Matrix', '-'*20)
+    print(cm)
+    plot_confusion_matrix2(cm, classes,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues)
+    print('-'*20 , 'Classification Report', '-'*20)
+    print(metrics.classification_report(y_test, y_pred_test, target_names=classes), '\n')
+    print(f"Jaccard Score: {metrics.jaccard_score(y_test, y_pred_test)}", '\n')
+    return clf, acc_test, acc_train
+
+clf1, acc_test1, acc_train1 = modeling(x, y, 0.2, ['No Purchased=0', 'Purchased=1'])
+
+clf2, acc_test2, acc_train2 = modeling(x, y, 0.3, ['No Purchased=0', 'Purchased=1'])
+
+clf3, acc_test3, acc_train3 = modeling(x, y, 0.15, ['No Purchased=0', 'Purchased=1'])
+
+clf3, acc_test3, acc_train3 = modeling(x, y, 0.1, ['No Purchased=0', 'Purchased=1'])
+
+del FPR1[1:]
+del TPR1[1:]
+del FPR0[1:]
+del TPR0[1:]
+del ACC_test[1:]
+del ACC_train[1:]
+del Recall[1:]
+del Precision[1:]
+del F1[1:]
+
+Perform_cross_val(clf1, 10, x, y, scoring='accuracy')
+
+find_fold_index(10, x)
+
+df3 = df2.drop(df2.index[np.r_[200:239+1, 360:399+1]], axis=0)
+print(f'df2:{df2.shape}')
+print(f'df3:{df3.shape}')
+
+x2 = np.asanyarray(df3.drop('Purchased', axis=1))
+y2 = df3.Purchased.values.reshape(-1,1)
+
+clf2, acc_test2, acc_train2 = modeling(x2, y2, 0.2, classes=['No Purchased=0', 'Purchased=1'])
+
+%matplotlib inline
+x_train, x_test, y_train, y_test = train_test_split(x2, y2, test_size=0.2, random_state=0)
+x_test = np.concatenate((x_test, y_test), axis=1)
+x_test = pd.DataFrame(x_test, columns=['Gender', 'Age', 'EstimatedSalary', 'Purchased'])
+
+fig = px.scatter_3d(
+    data_frame= x_test,
+    x=x_test.Age,
+    y=x_test.EstimatedSalary,
+    z=x_test.Purchased,
+    color=clf2.predict(x_test.drop('Purchased', axis=1)).astype(str),
+    color_discrete_sequence={0:'red', 1:'green'},
+    template='ggplot2',
+    opacity=0.6,
+    height=700,
+    title=f'Visualization Performance of clf2 in Predicting')
+
+pio.show(fig)
+
+clf2.predict(x_test.drop('Purchased', axis=1))
+
+final_model = MultinomialNB()
+final_model.fit(x2, y2)
+
+new_sample = pd.DataFrame({'Gender': [1], 'Age': [18], 'EstimatedSalary': [70000]})
+print(f"Gender: {new_sample['Gender'].values[0]}\n"
+      f"Age: {new_sample['Age'].values[0]}\n"
+      f"EstimatedSalary: {new_sample['EstimatedSalary'].values[0]}")
+new_sample['EstimatedSalary'] = scaler.transform(new_sample[['EstimatedSalary']])
+ns = np.asanyarray(new_sample)
+
+result = final_model.predict(ns)
+print('='*38)
+print(f"class {result}")
